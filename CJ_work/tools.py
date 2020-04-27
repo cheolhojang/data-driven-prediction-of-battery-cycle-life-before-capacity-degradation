@@ -10,14 +10,15 @@ from scipy import interpolate
 from sympy.solvers import solve
 from sympy import Symbol
 
-qa = pd.read_csv('QA_metadata_tabDelimited.txt', sep = "\t")
-simplified = qa[['ProcessDataID', 'CodeName', 'cathodeMass']]
-simplified = simplified.dropna()
+def metadata_simplification(qa_met):
+    qa = pd.read_csv(qa_met, sep = "\t")
+    simplified = qa[['ProcessDataID', 'CodeName', 'cathodeMass']]
+    simplified = simplified.dropna()
+    return simplified
+
 
 def path_listing(path):
     path_files = [f for f in listdir(path) if isfile(join(path, f)) if f[:13] == "ProcessDataID"]
-    for i in path_files:
-        print(i)
     return path_files
 
 def test_func(x, a, b, c, d, e):
@@ -102,7 +103,8 @@ def volt_statecap(lst_input):
     ax1.set_xlabel("State Capacity(mAh/g")
     ax1.set_ylabel("Voltage")
 
-def interp(inpt):
+def interp(inpt, qa_met):
+    simplified = metadata_simplification(qa_met)
     df = pd.read_csv(inpt, sep = "\t")
     i = list(simplified['ProcessDataID'])
     df['cathodeMass'] = np.ones(len(df)) * simplified.iloc[i.index(df['ProcessDataID'][1])].cathodeMass
@@ -134,11 +136,9 @@ def interp(inpt):
     hundth_charge['interp_divided'] = list(fc(new_valsc))
     hundth_charge['difference'] = abs(hundth_charge['divided'] - hundth_charge['interp_divided'])
 
-    plt.plot(hundth_charge['Voltage_V'], hundth_charge['difference'])
-    plt.plot(hundth_dis['Voltage_V'], hundth_dis['difference'])
 
-    #plt.plot(hundth_charge['Voltage_V'], hundth_charge['divided'])
-    #plt.plot(hundth_dis['Voltage_V'], hundth_dis['divided'])
-
-    #plt.plot(tenth_charge['Voltage_V'], tenth_charge['divided'])
-    #plt.plot(tenth_dis['Voltage_V'], tenth_dis['divided'])
+    fig, ax = plt.subplots()
+    plt.title(inpt)
+    ax.plot(hundth_charge['Voltage_V'], hundth_charge['difference'], "-b", label = 'Charge Difference')
+    ax.plot(hundth_dis['Voltage_V'], hundth_dis['difference'], "--r", label = 'Discharge Difference')
+    leg = ax.legend()
