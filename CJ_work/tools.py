@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from matplotlib.pyplot import figure
 from scipy import optimize
 from scipy import interpolate
+from scipy.interpolate import UnivariateSpline
 from sympy.solvers import solve
 from sympy import Symbol
 
@@ -142,3 +143,46 @@ def interp(inpt, qa_met):
     ax.plot(hundth_charge['Voltage_V'], hundth_charge['difference'], "-b", label = 'Charge Difference')
     ax.plot(hundth_dis['Voltage_V'], hundth_dis['difference'], "--r", label = 'Discharge Difference')
     leg = ax.legend()
+
+def deriv_grph(inpt, qa_met):
+    simplified = metadata_simplification(qa_met)
+    df = pd.read_csv(inpt, sep = "\t")
+    i = list(simplified['ProcessDataID'])
+    df['cathodeMass'] = np.ones(len(df)) * simplified.iloc[i.index(df['ProcessDataID'][1])].cathodeMass
+    df['divided'] = df['StateCapacity_mAh']/df['cathodeMass']
+    df = df[['ProcessDataID', 'StepNumber', 'Cycle', 'Step','State', 'Voltage_V', 'cathodeMass', 'StateCapacity_mAh', 'divided']]
+    df = df[df['Step'] == "ApplyCurrent"]
+    cycle_ten = df[df['Cycle'] == 10]
+    cycle_hun = df[df['Cycle'] == 100]
+
+    tenth_dis = cycle_ten[(cycle_ten['State'] == 'Discharge')]
+    tenth_charge = cycle_ten[(cycle_ten['State'] == 'Charge')]
+
+    hundth_dis = cycle_hun[(cycle_hun['State'] == 'Discharge')]
+    hundth_charge = cycle_hun[(cycle_hun['State'] == 'Charge')]
+
+    #figure(num=None, figsize=(10, 10), dpi=80, facecolor='w', edgecolor='k')
+
+    fp = hundth_charge['divided']
+    xp = hundth_charge['Voltage_V']
+    new_vals = tenth_charge['Voltage_V']
+    f = UnivariateSpline(xp, fp, k = 4, s = 0)
+    fig2, ax2 = plt.subplots(figsize = (10,10))
+    plt.title(inpt)
+    ax2.plot(new_vals, f(new_vals), "-b", label = 'Splined Curve')
+    ax2.plot(xp, fp,  "-r", label = 'Plain Graph')
+    ax2.plot(new_vals, f.derivative()(new_vals),  "-y", label = 'Derivative')
+    ax2.legend()
+
+    asc = hundth_dis.sort_values(by = "Voltage_V", ascending=True)
+    xp_d = asc["Voltage_V"]
+    fp_d = asc["divided"]
+    new_vals_d = tenth_dis["Voltage_V"]
+    f_d = UnivariateSpline(xp_d, fp_d, k = 4, s = 0)
+    #figure(num=None, figsize=(10, 10), dpi=80, facecolor='w', edgecolor='k')
+    fig, ax = plt.subplots(figsize = (10,10))
+    plt.title(inpt)
+    ax.plot(new_vals_d, f_d(new_vals_d),  "-b", label = 'Splined Curve')
+    ax.plot(xp_d, fp_d,  "-r", label = 'Plain Graph')
+    ax.plot(new_vals_d, f_d.derivative()(new_vals_d),  "-y", label = 'Derivative')
+    ax.legend()
